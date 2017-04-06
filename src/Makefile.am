@@ -66,6 +66,11 @@ lst:  $(PROGRAM).lst
 %.lst: %.elf
 	$(OBJDUMP) -h -S $< > $@
 
+# Rules for getting size info
+sizeinfo: $(PROGRAM).elf
+	nm --print-size --size-sort --radix=d $^
+	$(OBJSIZE) --format=avr --mcu=$(MCU_TARGET) $^
+
 # Rules for building the .text rom images
 
 text: hex bin srec

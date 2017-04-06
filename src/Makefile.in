@@ -120,6 +120,7 @@ MKDIR_P = @MKDIR_P@
 OBJCOPY = @OBJCOPY@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
+OBJSIZE = @OBJSIZE@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
@@ -443,6 +444,11 @@ lst:  $(PROGRAM).lst
 
 %.lst: %.elf
 	$(OBJDUMP) -h -S $< > $@
+
+# Rules for getting size info
+sizeinfo: $(PROGRAM).elf
+	nm --print-size --size-sort --radix=d $^
+	$(OBJSIZE) --format=avr --mcu=$(MCU_TARGET) $^
 
 # Rules for building the .text rom images
 

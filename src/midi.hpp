@@ -99,10 +99,8 @@ class MIDI_CVM_release: public MIDI_CVM<Antz_ifaces>
 			if( _status.cv1_note == note )
 			{
 				_status.cv1_note = 0 ;
-				if( !_status.cv2_on ) // TODO: ask Alex?
-					_Antz_view::set_vel( buffer[1] << 1 );
 			}
-			else if ( _status.cv2_on && _status.cv2_note == note )
+			else if( _status.cv2_on && _status.cv2_note == note )
 			{
 				_status.cv2_note = 0 ;
 			}

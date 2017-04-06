@@ -635,10 +635,9 @@ AVRDUDE_CHECK
 AVRDUDE_PROGRAMMER
 AVRDUDE_MCU
 MCU_TARGET
+OBJSIZE
 OBJDUMP
 OBJCOPY
-WITH_USART_PRINTF_FALSE
-WITH_USART_PRINTF_TRUE
 EGREP
 GREP
 CXXCPP
@@ -745,7 +744,6 @@ ac_user_opts='
 enable_option_checking
 enable_silent_rules
 enable_dependency_tracking
-enable_usart_printf
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1384,7 +1382,6 @@ Optional Features:
   --disable-silent-rules         verbose build output (undo: `make V=0')
   --disable-dependency-tracking  speeds up one-time build
   --enable-dependency-tracking   do not reject slow dependency extractors
-  --enable-usart-printf   enable usart printf.
 
 Some influential environment variables:
   CC          C compiler command
@@ -5729,29 +5726,6 @@ fi
 
 
 
-# Enables
-# Check whether --enable-usart-printf was given.
-if test "${enable_usart_printf+set}" = set; then :
-  enableval=$enable_usart_printf; with_usart_printf="yes"
-
-$as_echo "#define HAVE_USART_PRINTF 1" >>confdefs.h
-
-
-else
-  with_usart_printf="no"
-
-fi
-
-# Make sure we register this option with Automake
- if test "x$with_usart_printf" = "xyes"; then
-  WITH_USART_PRINTF_TRUE=
-  WITH_USART_PRINTF_FALSE='#'
-else
-  WITH_USART_PRINTF_TRUE='#'
-  WITH_USART_PRINTF_FALSE=
-fi
-
-
 # Checks for tools
 if test -n "$ac_tool_prefix"; then
   # Extract the first word of "${ac_tool_prefix}objcopy", so it can be a program name with args.
@@ -5935,6 +5909,98 @@ esac
   fi
 else
   OBJDUMP="$ac_cv_prog_OBJDUMP"
+fi
+
+if test -n "$ac_tool_prefix"; then
+  # Extract the first word of "${ac_tool_prefix}size", so it can be a program name with args.
+set dummy ${ac_tool_prefix}size; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_prog_OBJSIZE+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test -n "$OBJSIZE"; then
+  ac_cv_prog_OBJSIZE="$OBJSIZE" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_prog_OBJSIZE="${ac_tool_prefix}size"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+fi
+fi
+OBJSIZE=$ac_cv_prog_OBJSIZE
+if test -n "$OBJSIZE"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $OBJSIZE" >&5
+$as_echo "$OBJSIZE" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+fi
+if test -z "$ac_cv_prog_OBJSIZE"; then
+  ac_ct_OBJSIZE=$OBJSIZE
+  # Extract the first word of "size", so it can be a program name with args.
+set dummy size; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_prog_ac_ct_OBJSIZE+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test -n "$ac_ct_OBJSIZE"; then
+  ac_cv_prog_ac_ct_OBJSIZE="$ac_ct_OBJSIZE" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_prog_ac_ct_OBJSIZE="size"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+fi
+fi
+ac_ct_OBJSIZE=$ac_cv_prog_ac_ct_OBJSIZE
+if test -n "$ac_ct_OBJSIZE"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_ct_OBJSIZE" >&5
+$as_echo "$ac_ct_OBJSIZE" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+  if test "x$ac_ct_OBJSIZE" = x; then
+    OBJSIZE=":"
+  else
+    case $cross_compiling:$ac_tool_warned in
+yes:)
+{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: using cross tools not prefixed with host triplet" >&5
+$as_echo "$as_me: WARNING: using cross tools not prefixed with host triplet" >&2;}
+ac_tool_warned=yes ;;
+esac
+    OBJSIZE=$ac_ct_OBJSIZE
+  fi
+else
+  OBJSIZE="$ac_cv_prog_OBJSIZE"
 fi
 
 
@@ -6225,10 +6291,6 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${am__fastdepCXX_TRUE}" && test -z "${am__fastdepCXX_FALSE}"; then
   as_fn_error $? "conditional \"am__fastdepCXX\" was never defined.
-Usually this means the macro was only invoked conditionally." "$LINENO" 5
-fi
-if test -z "${WITH_USART_PRINTF_TRUE}" && test -z "${WITH_USART_PRINTF_FALSE}"; then
-  as_fn_error $? "conditional \"WITH_USART_PRINTF\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${WITH_AVRDUDE_TRUE}" && test -z "${WITH_AVRDUDE_FALSE}"; then

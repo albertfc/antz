@@ -34,8 +34,10 @@
 #define CV1_PIN     2
 #define CV2_REG     B
 #define CV2_PIN     7
-#define GATE_REG    C
-#define GATE_PIN    1
+#define NOTE_REG    C
+#define NOTE_PIN    1
+#define GATE_REG    D
+#define GATE_PIN    2
 #define SW1_REG     D
 #define SW1_PIN     5
 #define SW2_REG     D
@@ -111,10 +113,10 @@ struct AVR_MIDI_packet_parser: public Iface_MIDI_packet_parser<AVR_MIDI_packet_p
 			 && buffer[2] >> 7 == 0 )
 			{
 				// Check channel matches
-				//const uint8_t ch = (READ_PIN( SW3 ) ? (1<<2) : 0)
-				//                 | (READ_PIN( SW2 ) ? (1<<1) : 0)
-				//                 | (READ_PIN( SW1 ) ?  1     : 0);
-				//if( (buffer[0] & 0xf0) == ch )
+				const uint8_t ch = (READ_PIN( SW3 ) ? (1<<2) : 0)
+				                 + (READ_PIN( SW2 ) ? (1<<1) : 0)
+				                 + (READ_PIN( SW1 ) ?  1     : 0);
+				if( (buffer[0] & 0x0f) == ch )
 					break;
 			}
 			buffer[0] = buffer[1];
@@ -128,9 +130,15 @@ struct AVR_Antz_view: public Iface_Antz_view<AVR_Antz_view>
 	static void set_gate_impl( const bool value )
 	{
 		if( value )
+		{
 			WRT1_PIN( GATE ); /* Drive GATE high */
+			WRT1_PIN( NOTE ); /* Drive NOTE high */
+		}
 		else
+		{
 			WRT0_PIN( GATE ); /* Drive GATE low  */
+			WRT0_PIN( NOTE ); /* Drive NOTE low  */
+		}
 	}
 	static void set_cv1_impl( const uint8_t value )
 	{
@@ -149,7 +157,7 @@ struct AVR_Antz_view: public Iface_Antz_view<AVR_Antz_view>
 static inline void ddr_init( void )
 {
 	// Set gate DDR
-	DDR( GATE ) |= _BV( DD( GATE ) );
+	DDR( NOTE ) |= _BV( DD( NOTE ) );
 
 	// Set channel switch DDR
 	DDR( SW1 ) &= ~_BV( DD( SW1 ) );

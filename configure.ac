@@ -76,20 +76,10 @@ AC_TYPE_SIZE_T
 # c++ stdlib
 AC_CHECK_HEADER( [cstdlib], [AC_DEFINE([HAVE_CXXSTDLIB], 1, [c++ stdlib available])] )
 
-# Enables
-AC_ARG_ENABLE( [usart-printf],
-		[AS_HELP_STRING([--enable-usart-printf], [enable usart printf.])],
-			[with_usart_printf="yes"]
-			[AC_DEFINE([HAVE_USART_PRINTF],[1],[ usart printf])]
-			,
-			[with_usart_printf="no"]
-		)
-# Make sure we register this option with Automake
-AM_CONDITIONAL([WITH_USART_PRINTF], [test "x$with_usart_printf" = "xyes"])
-
 # Checks for tools
 AC_CHECK_TOOL([OBJCOPY], [objcopy], [:])
 AC_CHECK_TOOL([OBJDUMP], [objdump], [:])
+AC_CHECK_TOOL([OBJSIZE], [size], [:])
 
 # Check for MCU
 AC_ARG_VAR([MCU_TARGET], [select target MCU. Default = atmega328p])
