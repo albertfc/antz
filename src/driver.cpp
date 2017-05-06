@@ -156,8 +156,9 @@ struct AVR_Antz_view: public Iface_Antz_view<AVR_Antz_view>
 
 static inline void ddr_init( void )
 {
-	// Set gate DDR
+	// Set gate and note DDR
 	DDR( NOTE ) |= _BV( DD( NOTE ) );
+	DDR( GATE ) |= _BV( DD( GATE ) );
 
 	// Set channel switch DDR
 	DDR( SW1 ) &= ~_BV( DD( SW1 ) );
