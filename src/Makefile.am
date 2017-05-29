@@ -68,7 +68,7 @@ lst:  $(PROGRAM).lst
 
 # Rules for getting size info
 sizeinfo: $(PROGRAM).elf
-	nm --print-size --size-sort --radix=d $^
+	nm --print-size --size-sort --radix=d -C $^
 	$(OBJSIZE) --format=avr --mcu=$(MCU_TARGET) $^
 
 # Rules for building the .text rom images
