@@ -23,8 +23,10 @@
 
 struct MIDI_status
 {
-	bool cv2_on;
+	bool     cv1_free = true;
 	uint16_t cv1_note;
+	bool     cv2_on   = false;
+	bool     cv2_free = true;
 	uint16_t cv2_note;
 };
 
@@ -64,24 +66,32 @@ class MIDI_CVM_depress: public MIDI_CVM<Antz_ifaces>
 	public:
 		virtual void process( const uint8_t * buffer )
 		{
-			const uint16_t note   = buffer[0] < MIDI_NOTE_MIN ? MIDI_NOTE_MIN : buffer[0] > MIDI_NOTE_MAX ? MIDI_NOTE_MAX : buffer[0];
+			const uint16_t note   = buffer[0];
 			const uint8_t voltage = ((note - MIDI_NOTE_MIN) * MIDI_VOLTAGE_MAX) / MIDI_NOTE_TOTAL;
-			if( _status.cv1_note == 0 )
+			if( _status.cv1_free )
 			{
-				_Antz_view::set_cv1( voltage );
 				_status.cv1_note = note;
-				if( !_status.cv2_on )
-					_Antz_view::set_vel( buffer[1] << 1 );
+				_status.cv1_free = false;
+				if( note >= MIDI_NOTE_MIN && note < MIDI_NOTE_MAX )
+				{
+					_Antz_view::set_cv1( voltage );
+					if( !_status.cv2_on )
+						_Antz_view::set_vel( buffer[1] << 1 );
+				}
 			}
-			else if ( _status.cv2_on && _status.cv2_note == 0 )
+			else if( _status.cv2_on && _status.cv2_free == 0 )
 			{
-				_Antz_view::set_cv2( voltage );
 				_status.cv2_note = note;
+				_status.cv2_free = false;
+				if( note >= MIDI_NOTE_MIN && note < MIDI_NOTE_MAX )
+					_Antz_view::set_cv2( voltage );
 			}
 			else // Ignore msg
 				return;
 
-			_Antz_view::set_gate( true );
+			_Antz_view::set_note( true );
+			if( note >= MIDI_NOTE_MIN && note < MIDI_NOTE_MAX )
+				_Antz_view::set_gate( true );
 			DBG( "Depress data '%0x %0x'\n", buffer[0], buffer[1] );
 		}
 };
@@ -95,20 +105,24 @@ class MIDI_CVM_release: public MIDI_CVM<Antz_ifaces>
 	public:
 		virtual void process( const uint8_t * buffer )
 		{
-			const uint16_t note   = buffer[0] < MIDI_NOTE_MIN ? MIDI_NOTE_MIN : buffer[0] > MIDI_NOTE_MAX ? MIDI_NOTE_MAX : buffer[0];
-			if( _status.cv1_note == note )
+			const uint16_t note   = buffer[0];
+			if( !_status.cv1_free && _status.cv1_note == note )
 			{
-				_status.cv1_note = 0 ;
+				_status.cv1_free = true;
 			}
-			else if( _status.cv2_on && _status.cv2_note == note )
+			else if( !_status.cv2_free && _status.cv2_on && _status.cv2_note == note )
 			{
-				_status.cv2_note = 0 ;
+				_status.cv2_free = true;
 			}
 			else // Ignore msg
 				return;
 
-			if( _status.cv1_note == 0 && _status.cv2_note == 0 )
-				_Antz_view::set_gate( false );
+			if( _status.cv1_free && _status.cv2_free )
+			{
+				_Antz_view::set_note( false );
+				if( note >= MIDI_NOTE_MIN && note < MIDI_NOTE_MAX )
+					_Antz_view::set_gate( false );
+			}
 			DBG( "Release data '%0x %0x'\n", buffer[0], buffer[1] );
 		}
 };

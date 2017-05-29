@@ -127,18 +127,19 @@ struct AVR_MIDI_packet_parser: public Iface_MIDI_packet_parser<AVR_MIDI_packet_p
 
 struct AVR_Antz_view: public Iface_Antz_view<AVR_Antz_view>
 {
+	static void set_note_impl( const bool value )
+	{
+		if( value )
+			WRT1_PIN( NOTE ); /* Drive NOTE high */
+		else
+			WRT0_PIN( NOTE ); /* Drive NOTE low  */
+	}
 	static void set_gate_impl( const bool value )
 	{
 		if( value )
-		{
 			WRT1_PIN( GATE ); /* Drive GATE high */
-			WRT1_PIN( NOTE ); /* Drive NOTE high */
-		}
 		else
-		{
 			WRT0_PIN( GATE ); /* Drive GATE low  */
-			WRT0_PIN( NOTE ); /* Drive NOTE low  */
-		}
 	}
 	static void set_cv1_impl( const uint8_t value )
 	{

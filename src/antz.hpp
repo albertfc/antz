@@ -23,6 +23,8 @@
 template <typename Impl_Antz_view>
 struct Iface_Antz_view
 {
+	static void set_note( bool value )
+		{ Impl_Antz_view::set_note_impl( value ); }
 	static void set_gate( bool value )
 		{ Impl_Antz_view::set_gate_impl( value ); }
 	static void set_cv1( uint8_t value )
