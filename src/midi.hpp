@@ -79,7 +79,7 @@ class MIDI_CVM_depress: public MIDI_CVM<Antz_ifaces>
 						_Antz_view::set_vel( buffer[1] << 1 );
 				}
 			}
-			else if( _status.cv2_on && _status.cv2_free == 0 )
+			else if( _status.cv2_on && _status.cv2_free )
 			{
 				_status.cv2_note = note;
 				_status.cv2_free = false;
