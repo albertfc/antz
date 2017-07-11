@@ -76,11 +76,11 @@ static inline uint8_t spi_master_sndrcv( const uint8_t data )
 	return SPDR;                    /* Return Data Register */
 }
 
-static inline void spi_update( const uint8_t value, volatile uint8_t * const port, volatile uint8_t pin )
+static inline void spi_update( const uint16_t value, volatile uint8_t * const port, volatile uint8_t pin )
 {
 	*port &=~_BV( pin ); /* Drive CV low  */
-	spi_master_sndrcv( 0b00110000 | (value >> 4) );
-	spi_master_sndrcv(               value << 4  );
+	spi_master_sndrcv( 0b00110000 | (value >> 8) );
+	spi_master_sndrcv(               value       );
 	*port |= _BV( pin ); /* Drive CV high */
 }
 
@@ -108,7 +108,7 @@ struct AVR_MIDI_packet_parser: public Iface_MIDI_packet_parser<AVR_MIDI_packet_p
 		while( 1 )
 		{
 			buffer[2] = usart_receive();
-			if( buffer[0] >> 5 == 0b100 // Only intersted in release / depress msgs.
+			if( buffer[0] >> 7 == 1
 			 && buffer[1] >> 7 == 0
 			 && buffer[2] >> 7 == 0 )
 			{
@@ -141,11 +141,11 @@ struct AVR_Antz_view: public Iface_Antz_view<AVR_Antz_view>
 		else
 			WRT0_PIN( GATE ); /* Drive GATE low  */
 	}
-	static void set_cv1_impl( const uint8_t value )
+	static void set_cv1_impl( const uint16_t value )
 	{
 		spi_update( value, &PORT( CV1 ), P( CV1 ) );
 	}
-	static void set_cv2_impl( const uint8_t value )
+	static void set_cv2_impl( const uint16_t value )
 	{
 		spi_update( value, &PORT( CV2 ), P( CV2 ) );
 	}
