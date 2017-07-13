@@ -78,6 +78,10 @@ class MIDI_CVM: public MIDI_msg<Antz_ifaces>  // Channel Voice Message
 
 		static void depress( const uint8_t * buffer )
 		{
+			// Note On with velocity of 0 == Note Off
+			if( buffer[1] == 0 )
+				return release( buffer );
+
 			const uint32_t note    = buffer[0];
 			const uint16_t voltage = ((note - MIDI_NOTE_MIN) * MIDI_VOLTAGE_MAX) / MIDI_NOTE_TOTAL;
 			if( _status.cv1_free )
@@ -97,11 +101,6 @@ class MIDI_CVM: public MIDI_msg<Antz_ifaces>  // Channel Voice Message
 				_status.cv2_free = false;
 				if( note >= MIDI_NOTE_MIN && note < MIDI_NOTE_MAX )
 					_Antz_view::set_cv2( voltage );
-			}
-			else if( buffer[1] == 0 )
-			{
-				// Note On with velocity of 0 == Note Off
-				return release( buffer );
 			}
 			else // Ignore msg
 				return;
