@@ -88,7 +88,7 @@ class MIDI_CVM: public MIDI_msg<Antz_ifaces>  // Channel Voice Message
 				{
 					_Antz_view::set_cv1( voltage );
 					if( !_status.cv2_on )
-						_Antz_view::set_vel( buffer[1] << 1 );
+						_Antz_view::set_vel( buffer[1] << 5 );
 				}
 			}
 			else if( _status.cv2_on && _status.cv2_free )

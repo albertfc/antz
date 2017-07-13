@@ -149,7 +149,7 @@ struct AVR_Antz_view: public Iface_Antz_view<AVR_Antz_view>
 	{
 		spi_update( value, &PORT( CV2 ), P( CV2 ) );
 	}
-	static void set_vel_impl( const uint8_t value )
+	static void set_vel_impl( const uint16_t value )
 	{
 		spi_update( value, &PORT( CV2 ), P( CV2 ) );
 	}

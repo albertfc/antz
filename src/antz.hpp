@@ -31,7 +31,7 @@ struct Iface_Antz_view
 		{ Impl_Antz_view::set_cv1_impl( value ); }
 	static void set_cv2( uint16_t value )
 		{ Impl_Antz_view::set_cv2_impl( value ); }
-	static void set_vel( uint8_t value )
+	static void set_vel( uint16_t value )
 		{ Impl_Antz_view::set_vel_impl( value ); }
 
 	private:
