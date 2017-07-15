@@ -76,7 +76,7 @@ class MIDI_CVM: public MIDI_msg<Antz_ifaces>  // Channel Voice Message
 	protected:
 		using MIDI_msg<Antz_ifaces>::_status;
 
-		static void depress( const uint8_t * buffer )
+		void depress( const uint8_t * buffer )
 		{
 			// Note On with velocity of 0 == Note Off
 			if( buffer[1] == 0 )
@@ -111,7 +111,7 @@ class MIDI_CVM: public MIDI_msg<Antz_ifaces>  // Channel Voice Message
 			DBG( "Depress data '%0x %0x'\n", buffer[0], buffer[1] );
 		}
 
-		static void release( const uint8_t * buffer )
+		void release( const uint8_t * buffer )
 		{
 			const uint16_t note   = buffer[0];
 			if( !_status.cv1_free && _status.cv1_note == note )
@@ -172,7 +172,7 @@ class MIDI_CVM_pitch_bend: public MIDI_CVM<Antz_ifaces>
 	protected:
 		using MIDI_CVM<Antz_ifaces>::_status;
 
-		static uint16_t get_bended_voltage( const uint8_t * data_bytes, uint32_t note )
+		uint16_t get_bended_voltage( const uint8_t * data_bytes, uint32_t note )
 		{
 			note = note <  MIDI_NOTE_MIN ? MIDI_NOTE_MIN
 			     : note >= MIDI_NOTE_MAX ? MIDI_NOTE_MAX-1
