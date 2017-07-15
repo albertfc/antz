@@ -24,10 +24,10 @@
 struct MIDI_status
 {
 	bool     cv1_free = true;
-	uint16_t cv1_note = 0;
+	uint8_t  cv1_note = 0;
 	bool     cv2_on   = false;
 	bool     cv2_free = true;
-	uint16_t cv2_note = 0;
+	uint8_t  cv2_note = 0;
 };
 
 template <typename Antz_ifaces>
