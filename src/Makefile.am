@@ -18,8 +18,14 @@
 AUTOMAKE_OPTIONS = foreign
 
 PROGRAM        := antz
-CXXSOURCES     := driver.cpp
+CXXSOURCES     := driver.cpp utils.cpp
 CSOURCES       :=
+LIBS           := ustl/libustl.a
+
+ustl/libustl.a:
+	$(MAKE) -C ustl
+ustl_clean:
+	$(MAKE) -C ustl clean
 
 OBJECTS        := $(patsubst %.cpp,%.o,$(CXXSOURCES))
 OBJECTS        += $(patsubst %.c,%.o,$(CSOURCES))
@@ -53,10 +59,10 @@ $(DEPDIR)/%.d: %.c
 %.o: %.c $(DEPDIR)/%.d
 	$(CC) $(CPPFLAGS) -DNDEBUG $(CFLAGS) -ffunction-sections -fdata-sections -mmcu=$(MCU_TARGET) -c -o $@ $<
 
-$(PROGRAM).elf: $(OBJECTS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -mmcu=$(MCU_TARGET) -Wl,--gc-sections,-Map,$(PROGRAM).map -o $@ $^ $(LIBS)
+$(PROGRAM).elf: $(OBJECTS) $(LIBS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -mmcu=$(MCU_TARGET) -Wl,--gc-sections,-Map,$(PROGRAM).map -o $@ $^
 
-clean:
+clean: ustl_clean
 	@rm -vrf .deps
 	@rm -vrf *.o $(PROGRAM).elf *.eps *.png *.pdf *.bak
 	@rm -vrf *.lst *.map $(EXTRA_CLEAN_FILES)

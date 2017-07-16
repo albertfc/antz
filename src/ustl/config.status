@@ -1,0 +1,3 @@
+#! /bin/sh
+./configure --prefix=. --without-shared --with-static --without-bounds --without-mmx
+

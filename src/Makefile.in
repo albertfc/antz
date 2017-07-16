@@ -112,7 +112,7 @@ INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
-LIBS = @LIBS@
+LIBS := ustl/libustl.a
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
 MCU_TARGET = @MCU_TARGET@
@@ -205,7 +205,7 @@ top_srcdir = @top_srcdir@
 #
 AUTOMAKE_OPTIONS = foreign
 PROGRAM := antz
-CXXSOURCES := driver.cpp
+CXXSOURCES := driver.cpp utils.cpp
 CSOURCES := 
 OBJECTS := $(patsubst %.cpp,%.o,$(CXXSOURCES)) $(patsubst \
 	%.c,%.o,$(CSOURCES))
@@ -408,6 +408,11 @@ uninstall-am:
 	pdf-am ps ps-am uninstall uninstall-am
 
 
+ustl/libustl.a:
+	$(MAKE) -C ustl
+ustl_clean:
+	$(MAKE) -C ustl clean
+
 #all: $(PROGRAM).elf lst text eeprom
 all-am: $(PROGRAM).hex
 
@@ -432,10 +437,10 @@ $(DEPDIR)/%.d: %.c
 %.o: %.c $(DEPDIR)/%.d
 	$(CC) $(CPPFLAGS) -DNDEBUG $(CFLAGS) -ffunction-sections -fdata-sections -mmcu=$(MCU_TARGET) -c -o $@ $<
 
-$(PROGRAM).elf: $(OBJECTS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -mmcu=$(MCU_TARGET) -Wl,--gc-sections,-Map,$(PROGRAM).map -o $@ $^ $(LIBS)
+$(PROGRAM).elf: $(OBJECTS) $(LIBS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -mmcu=$(MCU_TARGET) -Wl,--gc-sections,-Map,$(PROGRAM).map -o $@ $^
 
-clean:
+clean: ustl_clean
 	@rm -vrf .deps
 	@rm -vrf *.o $(PROGRAM).elf *.eps *.png *.pdf *.bak
 	@rm -vrf *.lst *.map $(EXTRA_CLEAN_FILES)

@@ -19,15 +19,37 @@
 
 #include <stdint.h>
 
+#include "ustl/uvector.h"
+#include "ustl/ualgo.h"
+
 #include "log.h"
 
 struct MIDI_status
 {
-	bool     cv1_free = true;
-	uint8_t  cv1_note = 0;
-	bool     cv2_on   = false;
-	bool     cv2_free = true;
-	uint8_t  cv2_note = 0;
+	ustl::vector<uint8_t> stack;
+	bool     cv1_free;
+	uint8_t  cv1_note;
+	bool     cv2_on;
+	bool     cv2_free;
+	uint8_t  cv2_note;
+	uint8_t  pitch_bend[2];
+
+	MIDI_status(): stack(128)
+	{
+		reset();
+	}
+
+	void reset( void )
+	{
+		stack.resize(0);
+		cv1_free = true;
+		cv1_note = 0;
+		cv2_on   = false;
+		cv2_free = true;
+		cv2_note = 0;
+		pitch_bend[0] = 0;
+		pitch_bend[1] = 0;
+	}
 };
 
 template <typename Antz_ifaces>
@@ -56,8 +78,7 @@ class MIDI_CMM_all_notes_off: public MIDI_CMM<Antz_ifaces>
 			if( buffer[0] != 123 || buffer[1] != 0 )
 				return;
 
-			_status.cv1_free = true;
-			_status.cv2_free = true;
+			_status.reset();
 			_Antz_view::set_note( false );
 			_Antz_view::set_gate( false );
 		}
@@ -76,62 +97,137 @@ class MIDI_CVM: public MIDI_msg<Antz_ifaces>  // Channel Voice Message
 	protected:
 		using MIDI_msg<Antz_ifaces>::_status;
 
+		bool is_note_in_range( const uint8_t note )
+		{
+			return ( note >= MIDI_NOTE_MIN && note < MIDI_NOTE_MAX );
+		}
+
+		uint16_t get_bended_voltage( const uint8_t * data_bytes, uint32_t note )
+		{
+			note = note <  MIDI_NOTE_MIN ? MIDI_NOTE_MIN
+			     : note >= MIDI_NOTE_MAX ? MIDI_NOTE_MAX-1
+			     : note;
+			// transform pitch data to a signed int centered in 0 with +/- (1<<13 -1)
+			const int16_t pitch = (((uint16_t)data_bytes[1] << 7) + data_bytes[0]) - 0x1fff - 1;
+			// Compute voltage using fixed point and apply a pitch bend equivalent to 2 semitones
+			int32_t voltage  = ((((note - MIDI_NOTE_MIN) << 13) + 2*pitch) * MIDI_VOLTAGE_MAX);
+			        voltage /= (int32_t)MIDI_NOTE_TOTAL<<13; // CAUTION: division between signed and unsigned produces garbage!
+			// Protect voltage from out of bounds values
+			return voltage > (int32_t)MIDI_VOLTAGE_MAX ? MIDI_VOLTAGE_MAX
+			     : voltage <                         0 ?                0
+			     :                                                voltage;
+		}
+
+		uint16_t compute_voltage( uint32_t note )
+		{
+			return get_bended_voltage( _status.pitch_bend, note );
+		}
+
+		void cv1_play_note( const uint8_t note, const uint8_t vel = 0 )
+		{
+			_status.cv1_note = note;
+			_status.cv1_free = false;
+			_Antz_view::set_note( true );
+			if( !is_note_in_range( note ) )
+				return;
+
+			_Antz_view::set_cv1( compute_voltage( note ) );
+			if( !_status.cv2_on )
+				_Antz_view::set_vel( vel << 5 );
+			_Antz_view::set_gate( true );
+		}
+
+		void cv2_play_note( const uint32_t note )
+		{
+			_status.cv2_note = note;
+			_status.cv2_free = false;
+			_Antz_view::set_note( true );
+			if( !is_note_in_range( note ) )
+				return;
+
+			_Antz_view::set_cv2( compute_voltage( note ) );
+			_Antz_view::set_gate( true );
+		}
+
 		void depress( const uint8_t * buffer )
 		{
+			DBG( "Depress data '%0x %0x'\n", buffer[0], buffer[1] );
+
 			// Note On with velocity of 0 == Note Off
 			if( buffer[1] == 0 )
 				return release( buffer );
 
-			const uint32_t note    = buffer[0];
-			const uint16_t voltage = ((note - MIDI_NOTE_MIN) * MIDI_VOLTAGE_MAX) / MIDI_NOTE_TOTAL;
-			if( _status.cv1_free )
-			{
-				_status.cv1_note = note;
-				_status.cv1_free = false;
-				if( note >= MIDI_NOTE_MIN && note < MIDI_NOTE_MAX )
-				{
-					_Antz_view::set_cv1( voltage );
-					if( !_status.cv2_on )
-						_Antz_view::set_vel( buffer[1] << 5 );
-				}
-			}
-			else if( _status.cv2_on && _status.cv2_free )
-			{
-				_status.cv2_note = note;
-				_status.cv2_free = false;
-				if( note >= MIDI_NOTE_MIN && note < MIDI_NOTE_MAX )
-					_Antz_view::set_cv2( voltage );
-			}
-			else // Ignore msg
-				return;
+			const uint32_t note = buffer[0];
 
-			_Antz_view::set_note( true );
-			if( note >= MIDI_NOTE_MIN && note < MIDI_NOTE_MAX )
-				_Antz_view::set_gate( true );
-			DBG( "Depress data '%0x %0x'\n", buffer[0], buffer[1] );
+			if( !_status.cv2_on ) // monophonic mode
+			{
+				// Play note and push it.
+				cv1_play_note( note, buffer[1] );
+				_status.stack.push_back( note );
+			}
+			else // paraphonic
+			{
+				// Play note if there is a free channel, otherwise push it.
+				if( _status.cv1_free )
+					cv1_play_note( note );
+				else if( _status.cv2_free )
+					cv2_play_note( note );
+				else
+					_status.stack.push_back( note );
+			}
 		}
 
 		void release( const uint8_t * buffer )
 		{
-			const uint16_t note   = buffer[0];
-			if( !_status.cv1_free && _status.cv1_note == note )
-			{
-				_status.cv1_free = true;
-			}
-			else if( !_status.cv2_free && _status.cv2_on && _status.cv2_note == note )
-			{
-				_status.cv2_free = true;
-			}
-			else // Ignore msg
-				return;
-
-			if( _status.cv1_free && _status.cv2_free )
-			{
-				_Antz_view::set_note( false );
-				if( note >= MIDI_NOTE_MIN && note < MIDI_NOTE_MAX )
-					_Antz_view::set_gate( false );
-			}
 			DBG( "Release data '%0x %0x'\n", buffer[0], buffer[1] );
+
+			const uint8_t note = buffer[0];
+
+			if( !_status.cv2_on ) // monphonic mode
+			{
+				// Remove released note from stack
+				auto iterator = ustl::find( _status.stack.begin(), _status.stack.end(), note );
+				if( iterator != _status.stack.end() ) // Note must be in queue
+					_status.stack.erase( iterator );
+
+				if( _status.stack.size() ) // If there are notes to play, pop it and play.
+					cv1_play_note( _status.stack.back(), buffer[1] );
+				else { // No more notes to play
+					_Antz_view::set_note( false );
+					_Antz_view::set_gate( false );
+				}
+			}
+			else // paraphonic mode
+			{
+				// Search for a free channel. If there is at least one note in the 
+				// stack, pop it and play.
+				if( !_status.cv1_free && _status.cv1_note == note ) {
+					if( _status.stack.size() ) {
+						cv1_play_note( _status.stack.back() );
+						_status.stack.pop_back();
+					} else {
+						_status.cv1_free = true;
+					}
+				} else if( !_status.cv2_free && _status.cv2_note == note ) {
+					if( _status.stack.size() ) {
+						cv2_play_note( _status.stack.back() );
+						_status.stack.pop_back();
+					} else {
+						_status.cv2_free = true;
+					}
+				}
+				else { // No free channels. Remove note from stack
+					auto iterator = ustl::find( _status.stack.begin(), _status.stack.end(), note );
+					if( iterator != _status.stack.end() ) // Note must be in queue
+						_status.stack.erase( iterator );
+				}
+
+				if( _status.cv1_free && _status.cv2_free ) // No more notes to play
+				{
+					_Antz_view::set_note( false );
+					_Antz_view::set_gate( false );
+				}
+			}
 		}
 
 	public:
@@ -139,8 +235,10 @@ class MIDI_CVM: public MIDI_msg<Antz_ifaces>  // Channel Voice Message
 		{
 			if( value == _status.cv2_on )
 				return;
-			_status.cv2_on   = value;
-			_status.cv2_note = 0;
+			_status.reset();
+			_status.cv2_on = value;
+			_Antz_view::set_note( false );
+			_Antz_view::set_gate( false );
 		}
 };
 
@@ -172,28 +270,17 @@ class MIDI_CVM_pitch_bend: public MIDI_CVM<Antz_ifaces>
 	protected:
 		using MIDI_CVM<Antz_ifaces>::_status;
 
-		uint16_t get_bended_voltage( const uint8_t * data_bytes, uint32_t note )
-		{
-			note = note <  MIDI_NOTE_MIN ? MIDI_NOTE_MIN
-			     : note >= MIDI_NOTE_MAX ? MIDI_NOTE_MAX-1
-			     : note;
-			// transform pitch data to a signed int centered in 0 with +/- (1<<13 -1)
-			const int16_t pitch = (((uint16_t)data_bytes[1] << 7) + data_bytes[0]) - 0x1fff - 1;
-			// Compute voltage using fixed point and apply a pitch bend equivalent to 2 semitones
-			int32_t voltage  = ((((note - MIDI_NOTE_MIN) << 13) + 2*pitch) * MIDI_VOLTAGE_MAX);
-			        voltage /= (int32_t)MIDI_NOTE_TOTAL<<13; // CAUTION: division between signed and unsigned produces garbage!
-			// Protect voltage from out of bounds values
-			return voltage > (int32_t)MIDI_VOLTAGE_MAX ? MIDI_VOLTAGE_MAX
-			     : voltage <                         0 ?                0
-			     :                                                voltage;
-		}
-
 	public:
 		virtual void process( const uint8_t * buffer )
 		{
+			// Save pitch value
+			_status.pitch_bend[0] = buffer[0];
+			_status.pitch_bend[1] = buffer[1];
+
+			// Apply pitch if needed
 			if( _status.cv1_note )
-				_Antz_view::set_cv1( get_bended_voltage( buffer, _status.cv1_note ) );
+				_Antz_view::set_cv1( MIDI_CVM<Antz_ifaces>::get_bended_voltage( _status.pitch_bend, _status.cv1_note ) );
 			if( _status.cv2_note && _status.cv2_on )
-				_Antz_view::set_cv2( get_bended_voltage( buffer, _status.cv2_note ) );
+				_Antz_view::set_cv2( MIDI_CVM<Antz_ifaces>::get_bended_voltage( _status.pitch_bend, _status.cv2_note ) );
 		}
 };

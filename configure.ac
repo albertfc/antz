@@ -91,6 +91,12 @@ AS_IF([test "x$MCU_TARGET" = x],
 		[AC_MSG_RESULT([$MCU_TARGET])]
 	)
 
+# uSTL
+AC_MSG_NOTICE([configuring uSTL])
+pushd src/ustl 2>&1 > /dev/null
+AR=$AR RANLIB=$RANLIB CXX=$CXX AVR_OPTS=-mmcu=$MCU_TARGET ./configure --prefix=. --without-shared --with-static --without-bounds --without-mmx
+popd  2>&1 > /dev/null
+
 # Checks for programs
 AC_ARG_VAR([AVRDUDE_MCU], [select target MCU for avrdude. Default = m328p])
 AC_ARG_VAR([AVRDUDE_PROGRAMMER], [select programmer options for avrdude. Default = -V -c usbasp -P usb])

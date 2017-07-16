@@ -6026,6 +6026,13 @@ $as_echo "$MCU_TARGET" >&6; }
 
 fi
 
+# uSTL
+{ $as_echo "$as_me:${as_lineno-$LINENO}: configuring uSTL" >&5
+$as_echo "$as_me: configuring uSTL" >&6;}
+pushd src/ustl 2>&1 > /dev/null
+AR=$AR RANLIB=$RANLIB CXX=$CXX AVR_OPTS=-mmcu=$MCU_TARGET ./configure --prefix=. --without-shared --with-static --without-bounds --without-mmx
+popd  2>&1 > /dev/null
+
 # Checks for programs
 
 
