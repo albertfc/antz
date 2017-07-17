@@ -20,9 +20,11 @@
 #endif
 #define F_CPU 8000000UL
 #include <avr/io.h>
+#include <avr/interrupt.h>
 
 #include "config.h"
 #include "register.h"
+#include "scaler.h"
 
 #include "antz.hpp"
 #include "ifaces.hpp"
@@ -100,6 +102,45 @@ static void spi_init( void )
 	spi_update( 0, &PORT( CV2 ), P( CV2 ) );
 }
 
+#define GLIDE_TIMER_SCALER 64
+#define GLIDE_TIMER_FREQ   100UL
+static volatile  int32_t glide_from  = 0;
+static volatile  int32_t glide_to    = 0;
+static volatile uint16_t glide_val   = 0;
+static volatile uint16_t glide_count = 0;
+static void glide_timer_stop( void )
+{
+	TIMSK1 &=~_BV( OCIE2A ); /* Dissable interrupt */
+}
+static void glide_timer_init( void )
+{
+	TCCR1A |= _BV( WGM12 ); /* Configure timer 1 for CTC mode */
+
+	TIMER_SET_SCALER( TCCR1B, GLIDE_TIMER_SCALER, 1 );
+	TIMER_SET_OCR_VALUE( OCR1A, GLIDE_TIMER_SCALER, GLIDE_TIMER_FREQ );
+
+	glide_count = 0;
+	TCNT1   = 0;
+	TIMSK1 |= _BV( OCIE2A ); /* Enable interrupt */
+}
+ISR( TIMER1_COMPA_vect )
+{
+	TCNT1  = 0; // Clear counter. CTC mode should clear it, but it seems it does not ¿?
+
+	glide_count += 1;
+	int32_t inc = glide_count * (glide_to - glide_from);
+	        inc = inc / (int32_t)(GLIDE_TIMER_FREQ);
+	glide_val   = glide_from + inc;
+	if( (glide_from < glide_to && glide_val <= glide_to)
+	 || (glide_from > glide_to && glide_val >= glide_to))
+		spi_update( glide_val, &PORT( CV1 ), P( CV1 ) );
+	else {
+		glide_val = glide_to;
+		spi_update( glide_val, &PORT( CV1 ), P( CV1 ) );
+		glide_timer_stop();
+	}
+}
+
 struct AVR_MIDI_packet_parser: public Iface_MIDI_packet_parser<AVR_MIDI_packet_parser>
 {
 	static void get_packet_impl( uint8_t (&buffer)[3] )
@@ -143,7 +184,10 @@ struct AVR_Antz_view: public Iface_Antz_view<AVR_Antz_view>
 	}
 	static void set_cv1_impl( const uint16_t value )
 	{
-		spi_update( value, &PORT( CV1 ), P( CV1 ) );
+		glide_timer_stop();
+		glide_from = glide_val;
+		glide_to   = value;
+		glide_timer_init();
 	}
 	static void set_cv2_impl( const uint16_t value )
 	{
@@ -180,6 +224,7 @@ int main( int argc, char * argv[] )
 	ddr_init();
 	spi_init();
 	usart_init();
+	sei();
 
 	while( 1 )
 	{

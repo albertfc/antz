@@ -33,6 +33,8 @@ struct Iface_Antz_view
 		{ Impl_Antz_view::set_cv2_impl( value ); }
 	static void set_vel( uint16_t value )
 		{ Impl_Antz_view::set_vel_impl( value ); }
+	static void glide_cv1( uint16_t value )
+		{ Impl_Antz_view::set_glide_impl( value ); }
 
 	private:
 		Iface_Antz_view() {} // Pure static class. Disallow creating an instance of this object

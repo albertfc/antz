@@ -4,7 +4,7 @@
 // Define to the one symbol short name of this package.
 #define USTL_NAME	"ustl"
 // Define to the full name and version of this package.
-#define USTL_STRING	"ustl v2.5-8-gb5f3191"
+#define USTL_STRING	"ustl v2.5"
 // Define to the version of this package.
 #define USTL_VERSION	0x250
 // Define to the address where bug reports for this package should be sent.
