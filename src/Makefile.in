@@ -443,7 +443,8 @@ $(PROGRAM).elf: $(OBJECTS) $(LIBS)
 clean: ustl_clean
 	@rm -vrf .deps
 	@rm -vrf *.o $(PROGRAM).elf *.eps *.png *.pdf *.bak
-	@rm -vrf *.lst *.map $(EXTRA_CLEAN_FILES)
+	@rm -vrf *.lst *.map
+#	@rm -vrf *.lst *.map $(EXTRA_CLEAN_FILES)
 
 lst:  $(PROGRAM).lst
 
