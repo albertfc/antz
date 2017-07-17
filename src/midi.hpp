@@ -48,7 +48,7 @@ struct MIDI_status
 		cv2_free = true;
 		cv2_note = 0;
 		pitch_bend[0] = 0;
-		pitch_bend[1] = 0;
+		pitch_bend[1] = 64; // No bend
 	}
 };
 
