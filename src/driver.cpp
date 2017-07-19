@@ -103,11 +103,12 @@ static void spi_init( void )
 }
 
 #define GLIDE_TIMER_SCALER 64
-#define GLIDE_TIMER_FREQ   100UL
-static volatile  int32_t glide_from  = 0;
-static volatile  int32_t glide_to    = 0;
-static volatile uint16_t glide_val   = 0;
-static volatile uint16_t glide_count = 0;
+#define GLIDE_TIMER_FREQ   1000UL
+static volatile  int32_t glide_from  = 0; // Voltatge from
+static volatile  int32_t glide_to    = 0; // Voltatge to
+static volatile uint16_t glide_val   = 0; // Current voltatge
+static volatile uint16_t glide_count = 0; // timer counter
+static volatile  int32_t glide_ms    = 0; // Glide miliseconds
 static void glide_timer_stop( void )
 {
 	TIMSK1 &=~_BV( OCIE2A ); /* Dissable interrupt */
@@ -129,7 +130,7 @@ ISR( TIMER1_COMPA_vect )
 
 	glide_count += 1;
 	int32_t inc = glide_count * (glide_to - glide_from);
-	        inc = inc / (int32_t)(GLIDE_TIMER_FREQ);
+	        inc = inc / glide_ms;
 	glide_val   = glide_from + inc;
 	if( (glide_from < glide_to && glide_val <= glide_to)
 	 || (glide_from > glide_to && glide_val >= glide_to))
@@ -182,12 +183,17 @@ struct AVR_Antz_view: public Iface_Antz_view<AVR_Antz_view>
 		else
 			WRT0_PIN( GATE ); /* Drive GATE low  */
 	}
-	static void set_cv1_impl( const uint16_t value )
+	static void set_cv1_impl( const uint16_t value, const int32_t ms )
 	{
-		glide_timer_stop();
-		glide_from = glide_val;
-		glide_to   = value;
-		glide_timer_init();
+		if( ms == 0 ) // No glide
+			spi_update( value, &PORT( CV1 ), P( CV1 ) );
+		else {
+			glide_timer_stop();
+			glide_ms   = ms;
+			glide_from = glide_val;
+			glide_to   = value;
+			glide_timer_init();
+		}
 	}
 	static void set_cv2_impl( const uint16_t value )
 	{

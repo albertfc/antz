@@ -131,7 +131,7 @@ class MIDI_CVM: public MIDI_msg<Antz_ifaces>  // Channel Voice Message
 			if( !is_note_in_range( note ) )
 				return;
 
-			_Antz_view::set_cv1( compute_voltage( note ) );
+			_Antz_view::set_cv1( compute_voltage( note ), 500 );
 			if( !_status.cv2_on )
 				_Antz_view::set_vel( vel << 5 );
 			_Antz_view::set_gate( true );

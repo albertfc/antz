@@ -27,8 +27,8 @@ struct Iface_Antz_view
 		{ Impl_Antz_view::set_note_impl( value ); }
 	static void set_gate( bool value )
 		{ Impl_Antz_view::set_gate_impl( value ); }
-	static void set_cv1( uint16_t value )
-		{ Impl_Antz_view::set_cv1_impl( value ); }
+	static void set_cv1( uint16_t value, int32_t ms = 0 )
+		{ Impl_Antz_view::set_cv1_impl( value, ms ); }
 	static void set_cv2( uint16_t value )
 		{ Impl_Antz_view::set_cv2_impl( value ); }
 	static void set_vel( uint16_t value )
