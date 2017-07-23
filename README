@@ -8,6 +8,16 @@ voltages for controlling the synth.
 The code is designed to run in a Atmel AVR atmega328p, but easily should run in
 any other AVR device with few modifications.
 
+Standard MIDI messages supported:
+* 1000 -- Note off
+* 1001 -- Note on (Note off with velocity = 0)
+* 1110 -- Pitch Bend
+* 1011 -- Control Change
+  - Portamento/glide duration in cents of a second.
+  - All notes off
+  - Registered paramters
+      0x0000 - Pitch bend sensitivity in semitones at MSB and 1/128 semitones at LSB.
+
 Compilation and upload
 ======================
 $ ./configure --host=avr

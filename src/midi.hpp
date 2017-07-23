@@ -299,18 +299,10 @@ class MIDI_CVM_control_change: public MIDI_CVM<Antz_ifaces>
 			_status.pitch_bend_sensitivity[1] = _rpv[1];
 		}
 
-		void glide_time( void )
-		{
-			_status.glide_time_ms  =  100UL * (uint32_t)_rpv[1];
-			_status.glide_time_ms += (100UL * (uint32_t)_rpv[0]) / 256UL;
-		}
-
 		void registered_parameters( void )
 		{
-			if(      _rpn[1] == 0 && _rpn[0] == 0 ) // Pitch Bend Sensitivity
+			if( _rpn[1] == 0 && _rpn[0] == 0 ) // Pitch Bend Sensitivity
 				pitch_bend_sensitivity();
-			else if( _rpn[1] == 0 && _rpn[0] == 5 ) // Glide time
-				glide_time();
 		}
 
 	public:
@@ -318,11 +310,8 @@ class MIDI_CVM_control_change: public MIDI_CVM<Antz_ifaces>
 		{
 			switch( buffer[0] )
 			{
-				case 100: // Registered Parameter Number LSB
-					_rpn[0] = buffer[1];
-					break;
-				case 101: // Registered Parameter Number MSB
-					_rpn[1] = buffer[1];
+				case   5: //  Portamento time
+					_status.glide_time_ms = 10UL * (uint32_t)buffer[1];
 					break;
 				case   6: // Data entry MSB for RP
 					_rpv[1] = buffer[1];
@@ -333,7 +322,7 @@ class MIDI_CVM_control_change: public MIDI_CVM<Antz_ifaces>
 					registered_parameters();
 					break;
 				case  96: // Data MSB increment for RP
-					if( _rpv[1] != 255 ) {
+					if( _rpv[1] != 127 ) {
 						_rpv[1]++;
 						registered_parameters();
 					}
@@ -343,6 +332,12 @@ class MIDI_CVM_control_change: public MIDI_CVM<Antz_ifaces>
 						_rpv[1]--;
 						registered_parameters();
 					}
+					break;
+				case 100: // Registered Parameter Number LSB
+					_rpn[0] = buffer[1];
+					break;
+				case 101: // Registered Parameter Number MSB
+					_rpn[1] = buffer[1];
 					break;
 				case 123: // all notes off
 					if( buffer[1] == 0 )
