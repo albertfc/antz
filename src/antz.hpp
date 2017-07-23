@@ -58,18 +58,18 @@ struct Antz_interfaces
 	template<> \
 	MIDI_status MIDI_msg<_Antz_ifaces>::_status = MIDI_status(); \
 	template<> \
-	MIDI_CMM_all_notes_off<_Antz_ifaces> Antz_model<Impl_Antz_view>::all_notes_off = MIDI_CMM_all_notes_off<_Antz_ifaces>(); \
-	template<> \
 	MIDI_CVM_depress<_Antz_ifaces> Antz_model<Impl_Antz_view>::depress = MIDI_CVM_depress<_Antz_ifaces>(); \
 	template<> \
 	MIDI_CVM_release<_Antz_ifaces> Antz_model<Impl_Antz_view>::release = MIDI_CVM_release<_Antz_ifaces>(); \
+	template<> \
+	MIDI_CVM_control_change<_Antz_ifaces> Antz_model<Impl_Antz_view>::control_change = MIDI_CVM_control_change<_Antz_ifaces>(); \
 	template<> \
 	MIDI_CVM_pitch_bend<_Antz_ifaces> Antz_model<Impl_Antz_view>::pitch_bend = MIDI_CVM_pitch_bend<_Antz_ifaces>(); \
 	template<> \
 	MIDI_msg<_Antz_ifaces> * const Antz_model<Impl_Antz_view >::strategies[]  = { \
 		&Antz_model<Impl_Antz_view >::release, \
 		&Antz_model<Impl_Antz_view >::depress, \
-		&Antz_model<Impl_Antz_view >::all_notes_off, \
+		&Antz_model<Impl_Antz_view >::control_change, \
 		&Antz_model<Impl_Antz_view >::pitch_bend \
 	};
 
@@ -82,8 +82,10 @@ class Antz_model
 
 		static int8_t get_strategy_idx( const uint8_t status )
 		{
-			// Maps msg_supported -> strategies_idx       Note off  Note On   All off   P. bend
-			static constexpr uint8_t msg_supported[4] = { 0b1000,   0b1001,   0b1011,   0b1110}; // Must be sorted!
+			// Maps msg_supported -> strategies_idx      Note off  Note On   C.Change  P. bend
+			static constexpr uint8_t msg_supported[] = { 0b1000,   0b1001,   0b1011,   0b1110 }; // Must be sorted!
+			static_assert( (sizeof strategies/ sizeof strategies[0]) == (sizeof msg_supported / sizeof msg_supported[0]),
+					"strategies[] and msg_supported[] must have the same size!" );
 
 			uint8_t idx = 0;
 			while( status > msg_supported[idx] && idx++ < sizeof( msg_supported ) );
@@ -92,11 +94,11 @@ class Antz_model
 
 	public:
 		// Strategy pattern
-		static MIDI_CMM_all_notes_off<_Antz_ifaces> all_notes_off;
 		static MIDI_CVM_depress<_Antz_ifaces> depress;
 		static MIDI_CVM_release<_Antz_ifaces> release;
+		static MIDI_CVM_control_change<_Antz_ifaces> control_change;
 		static MIDI_CVM_pitch_bend<_Antz_ifaces> pitch_bend;
-		static MIDI_msg<_Antz_ifaces> * const strategies[4];
+		static MIDI_msg<_Antz_ifaces> * const strategies[];
 
 		static void process_msg( const uint8_t * msg )
 		{

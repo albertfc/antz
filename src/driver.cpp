@@ -185,10 +185,11 @@ struct AVR_Antz_view: public Iface_Antz_view<AVR_Antz_view>
 	}
 	static void set_cv1_impl( const uint16_t value, const int32_t ms )
 	{
-		if( ms == 0 ) // No glide
+		glide_timer_stop();
+		if( ms == 0 ) { // No glide
 			spi_update( value, &PORT( CV1 ), P( CV1 ) );
-		else {
-			glide_timer_stop();
+			glide_val = value;
+		} else {
 			glide_ms   = ms;
 			glide_from = glide_val;
 			glide_to   = value;

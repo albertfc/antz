@@ -33,6 +33,8 @@ struct MIDI_status
 	bool     cv2_free;
 	uint8_t  cv2_note;
 	uint8_t  pitch_bend[2];
+	uint8_t  pitch_bend_sensitivity[2];
+	uint32_t glide_time_ms;
 
 	MIDI_status(): stack(128)
 	{
@@ -49,6 +51,9 @@ struct MIDI_status
 		cv2_note = 0;
 		pitch_bend[0] = 0;
 		pitch_bend[1] = 64; // No bend
+		pitch_bend_sensitivity[1] = 2; // MIDI std. default: 2 semitones
+		pitch_bend_sensitivity[0] = 0;
+		glide_time_ms = 0;
 	}
 };
 
@@ -60,28 +65,6 @@ class MIDI_msg
 
 	public:
 		virtual void process( const uint8_t * buffer ) = 0;
-};
-
-template <typename Antz_ifaces>
-class MIDI_CMM: public MIDI_msg<Antz_ifaces>  // Channel Mode Message
-{};
-
-template <typename Antz_ifaces>
-class MIDI_CMM_all_notes_off: public MIDI_CMM<Antz_ifaces>
-{
-	typedef decltype(Antz_ifaces::_Antz_view) _Antz_view;
-	using MIDI_msg<Antz_ifaces>::_status;
-
-	public:
-		virtual void process( const uint8_t * buffer )
-		{
-			if( buffer[0] != 123 || buffer[1] != 0 )
-				return;
-
-			_status.reset();
-			_Antz_view::set_note( false );
-			_Antz_view::set_gate( false );
-		}
 };
 
 static constexpr uint32_t MIDI_VOLTAGE_MAX = 4095L;
@@ -108,9 +91,15 @@ class MIDI_CVM: public MIDI_msg<Antz_ifaces>  // Channel Voice Message
 			     : note >= MIDI_NOTE_MAX ? MIDI_NOTE_MAX-1
 			     : note;
 			// transform pitch data to a signed int centered in 0 with +/- (1<<13 -1)
-			const int16_t pitch = (((uint16_t)data_bytes[1] << 7) + data_bytes[0]) - 0x1fff - 1;
-			// Compute voltage using fixed point and apply a pitch bend equivalent to 2 semitones
-			int32_t voltage  = ((((note - MIDI_NOTE_MIN) << 13) + 2*pitch) * MIDI_VOLTAGE_MAX);
+			int32_t   pitch  = (((uint32_t)data_bytes[1] << 7) + data_bytes[0]) - 0x1fff - 1;
+			// Add pitch sensitivity using fixed point aritmethic (scaling factor = 100)
+			          pitch *= 100 * _status.pitch_bend_sensitivity[1] + (100 * _status.pitch_bend_sensitivity[0]) / 256;
+			// Compute voltage using fixed point and apply pitch bend
+			int32_t voltage  = 100 * ((note - MIDI_NOTE_MIN) << 13) + pitch;
+			// Scale back
+			        voltage /= 100;
+			// Transform to voltage
+			        voltage *= MIDI_VOLTAGE_MAX;
 			        voltage /= (int32_t)MIDI_NOTE_TOTAL<<13; // CAUTION: division between signed and unsigned produces garbage!
 			// Protect voltage from out of bounds values
 			return voltage > (int32_t)MIDI_VOLTAGE_MAX ? MIDI_VOLTAGE_MAX
@@ -131,7 +120,8 @@ class MIDI_CVM: public MIDI_msg<Antz_ifaces>  // Channel Voice Message
 			if( !is_note_in_range( note ) )
 				return;
 
-			_Antz_view::set_cv1( compute_voltage( note ), 500 );
+			//_Antz_view::set_cv1( compute_voltage( note ), 500 );
+			_Antz_view::set_cv1( compute_voltage( note ), _status.glide_time_ms );
 			if( !_status.cv2_on )
 				_Antz_view::set_vel( vel << 5 );
 			_Antz_view::set_gate( true );
@@ -284,3 +274,83 @@ class MIDI_CVM_pitch_bend: public MIDI_CVM<Antz_ifaces>
 				_Antz_view::set_cv2( MIDI_CVM<Antz_ifaces>::get_bended_voltage( _status.pitch_bend, _status.cv2_note ) );
 		}
 };
+
+template <typename Antz_ifaces>
+class MIDI_CVM_control_change: public MIDI_CVM<Antz_ifaces>
+{
+	typedef decltype(Antz_ifaces::_Antz_view) _Antz_view;
+
+	uint8_t _rpn[2]; // Registered parameter number
+	uint8_t _rpv[2]; // Registered parameter value
+
+	protected:
+		using MIDI_CVM<Antz_ifaces>::_status;
+
+		void all_notes_off( void )
+		{
+			_status.reset();
+			_Antz_view::set_note( false );
+			_Antz_view::set_gate( false );
+		}
+
+		void pitch_bend_sensitivity( void )
+		{
+			_status.pitch_bend_sensitivity[0] = _rpv[0];
+			_status.pitch_bend_sensitivity[1] = _rpv[1];
+		}
+
+		void glide_time( void )
+		{
+			_status.glide_time_ms  =  100UL * (uint32_t)_rpv[1];
+			_status.glide_time_ms += (100UL * (uint32_t)_rpv[0]) / 256UL;
+		}
+
+		void registered_parameters( void )
+		{
+			if(      _rpn[1] == 0 && _rpn[0] == 0 ) // Pitch Bend Sensitivity
+				pitch_bend_sensitivity();
+			else if( _rpn[1] == 0 && _rpn[0] == 5 ) // Glide time
+				glide_time();
+		}
+
+	public:
+		virtual void process( const uint8_t * buffer )
+		{
+			switch( buffer[0] )
+			{
+				case 100: // Registered Parameter Number LSB
+					_rpn[0] = buffer[1];
+					break;
+				case 101: // Registered Parameter Number MSB
+					_rpn[1] = buffer[1];
+					break;
+				case   6: // Data entry MSB for RP
+					_rpv[1] = buffer[1];
+					registered_parameters();
+					break;
+				case  38: // Data entry LSB for RP
+					_rpv[0] = buffer[1];
+					registered_parameters();
+					break;
+				case  96: // Data MSB increment for RP
+					if( _rpv[1] != 255 ) {
+						_rpv[1]++;
+						registered_parameters();
+					}
+					break;
+				case  97: // Data MSB decrement for RP
+					if( _rpv[1] != 0 ) {
+						_rpv[1]--;
+						registered_parameters();
+					}
+					break;
+				case 123: // all notes off
+					if( buffer[1] == 0 )
+						all_notes_off();
+					break;
+				default:
+					break;
+			}
+		}
+};
+
