@@ -161,12 +161,20 @@ class MIDI_CVM: public MIDI_msg<Antz_ifaces>  // Channel Voice Message
 
 			if( !_status.cv2_on ) // monophonic mode
 			{
-				// Play note and push it.
+				// Play note
 				cv1_play_note( note, buffer[1] );
-				_status.stack.push_back( note );
+				// Push note only if it hasn't already been depressed (it isn't in the stack)
+				if( _status.stack.end() == ustl::find( _status.stack.begin(), _status.stack.end(), note ))
+					_status.stack.push_back( note );
 			}
 			else // paraphonic
 			{
+				// Handle note only if it hasn't already been depressed (it is being played or it  isn't in the stack)
+				if( (!_status.cv1_free && _status.cv1_note == note)
+				 || (!_status.cv2_free && _status.cv2_note == note)
+				 || _status.stack.end() != ustl::find( _status.stack.begin(), _status.stack.end(), note ))
+					return;
+
 				// Play note if there is a free channel, otherwise push it.
 				if( _status.cv1_free )
 					cv1_play_note( note );
