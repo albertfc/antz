@@ -104,21 +104,37 @@ struct AVR_MIDI_packet_parser: public Iface_MIDI_packet_parser<AVR_MIDI_packet_p
 {
 	static void get_packet_impl( uint8_t (&buffer)[3] )
 	{
+		static uint8_t prev_status = 0;
+		bool           running_status = false;
+
 		buffer[0] = 0; buffer[1] = 0;
 		while( 1 )
 		{
 			buffer[2] = usart_receive();
-			if( buffer[0] >> 7 == 1
-			 && buffer[1] >> 7 == 0
-			 && buffer[2] >> 7 == 0 )
+
+			const uint8_t ch = (READ_PIN( SW3 ) ? (1<<2) : 0)
+			                 + (READ_PIN( SW2 ) ? (1<<1) : 0)
+			                 + (READ_PIN( SW1 ) ?  1     : 0);
+
+			if(((buffer[0] & 0x80)                  // Regular messages
+			 || (buffer[0] == 0 && running_status)) // Running status (only data[2])
+			 && (buffer[1] & 0x80) == 0 && (buffer[2] & 0x80) == 0) // Data bytes
 			{
-				// Check channel matches
-				const uint8_t ch = (READ_PIN( SW3 ) ? (1<<2) : 0)
-				                 + (READ_PIN( SW2 ) ? (1<<1) : 0)
-				                 + (READ_PIN( SW1 ) ?  1     : 0);
-				if( (buffer[0] & 0x0f) == ch )
-					break;
+				if( buffer[0] )
+					prev_status = buffer[0]; // Save status byte for running status
+				else
+					buffer[0] = prev_status; // Set status byte as previous
+
+				if( (buffer[0] & 0x0f) == ch )  // channel check
+					break; // Got msg!!
+
+				// Reset and continue
+				buffer[0] = 0; buffer[1] = 0;
+				running_status = false;
+				continue;
 			}
+			if( prev_status )
+				running_status = true;
 			buffer[0] = buffer[1];
 			buffer[1] = buffer[2];
 		}
